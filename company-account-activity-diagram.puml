@@ -1,0 +1,78 @@
+@startuml SXX_account_activity_diagram
+title Company account system - activity diagram
+skinparam shadowing false
+
+start
+:Initialise repositories, service and menu;
+
+repeat
+  :Display main menu;
+  :Read menu option;
+
+  switch (Selected option)
+  case (1 - Register)
+    :Enter company name, organisation number,\nemail, phone number, contact first name,\ncontact last name and password;
+    :Create CompanyCustomer from input;
+    :Use contact email as login email;
+
+    if (All required fields provided?) then (yes)
+      :Trim company name, organisation number\nand company email;
+      if (Company and login email formats valid?) then (yes)
+        :Trim phone number, contact names\nand login email;
+        :Look up company by organisation number;
+        if (Company already registered?) then (yes)
+          :Display duplicate organisation number error;
+        else (no)
+          :Look up account by login email;
+          if (Login email already registered?) then (yes)
+            :Display duplicate login email error;
+          else (no)
+            :Create CompanyAccount linked to customer.Id;
+            :Store customer and account in memory;
+            :Display registration confirmation;
+          endif
+        endif
+      else (no)
+        :Display email format error;
+      endif
+    else (no)
+      :Display first missing-field error;
+    endif
+
+  case (2 - Log in)
+    :Enter login email and password;
+    if (Email and password provided?) then (yes)
+      :Trim login email;
+      if (Login email format valid?) then (yes)
+        :Look up account by login email;
+        if (Account found and password matches?) then (yes)
+          :Look up company using\naccount.CompanyCustomerId;
+          if (Company found?) then (yes)
+            :Display Welcome and company name;
+            note right
+              Current code displays a welcome message;
+              it does not retain a signed-in session.
+            end note
+          else (no)
+            :Display linked company not found error;
+          endif
+        else (no)
+          :Display Invalid email or password;
+        endif
+      else (no)
+        :Display Invalid email or password;
+      endif
+    else (no)
+      :Display Invalid email or password;
+    endif
+
+  case (0 - Exit)
+    :Exit application;
+    stop
+
+  case (Other)
+    :Display Invalid option;
+  endswitch
+
+repeat while (Return to main menu) is (always)
+@enduml

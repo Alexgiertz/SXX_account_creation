@@ -1,0 +1,118 @@
+@startuml SXX_account_class_diagram
+title Company account system - current implementation
+top to bottom direction
+skinparam linetype ortho
+hide empty members
+
+package Models {
+  class CompanyCustomer {
+    +Id : Guid
+    +CompanyName : string
+    +OrganisationNumber : string
+    +Email : string
+    +PhoneNumber : string
+    +ContactFirstName : string
+    +ContactLastName : string
+  }
+  class CompanyAccount {
+    +Id : Guid
+    +CompanyCustomerId : Guid
+    +LoginEmail : string
+    +Password : string
+  }
+}
+
+package Interfaces {
+  interface ICompanyAccountService {
+    +Login(loginEmail : string, password : string) : CompanyAccount?
+    +Register(customer : CompanyCustomer, loginEmail : string, password : string) : CompanyAccount
+    +GetCompanyCustomer(companyCustomerId : Guid) : CompanyCustomer?
+  }
+  interface ICompanyAccountRepository {
+    +Add(account : CompanyAccount) : void
+    +GetById(id : Guid) : CompanyAccount?
+    +GetByEmail(email : string) : CompanyAccount?
+  }
+  interface ICompanyCustomerRepository {
+    +Add(customer : CompanyCustomer) : void
+    +GetById(id : Guid) : CompanyCustomer?
+    +GetByOrganisationNumber(organisationNumber : string) : CompanyCustomer?
+    +GetByEmail(email : string) : CompanyCustomer?
+    +GetByPhoneNumber(phoneNumber : string) : CompanyCustomer?
+  }
+}
+
+package Service {
+  class CompanyAccountService {
+    -_accountRepository : ICompanyAccountRepository {readOnly}
+    -_customerRepository : ICompanyCustomerRepository {readOnly}
+    -{static} IsValidEmail(email : string) : bool
+    +CompanyAccountService(accountRepository : ICompanyAccountRepository, customerRepository : ICompanyCustomerRepository)
+    +Register(customer : CompanyCustomer, loginEmail : string, password : string) : CompanyAccount
+    +GetCompanyCustomer(companyCustomerId : Guid) : CompanyCustomer?
+    +Login(loginEmail : string, password : string) : CompanyAccount?
+  }
+}
+
+package Repository {
+  class InMemoryCompanyAccountRepository {
+    -_accounts : List<CompanyAccount> {readOnly}
+    +Add(account : CompanyAccount) : void
+    +GetById(id : Guid) : CompanyAccount?
+    +GetByEmail(email : string) : CompanyAccount?
+  }
+  class InMemoryCompanyCustomerRepository {
+    -_customers : List<CompanyCustomer> {readOnly}
+    +Add(customer : CompanyCustomer) : void
+    +GetById(id : Guid) : CompanyCustomer?
+    +GetByOrganisationNumber(organisationNumber : string) : CompanyCustomer?
+    +GetByEmail(email : string) : CompanyCustomer?
+    +GetByPhoneNumber(phoneNumber : string) : CompanyCustomer?
+  }
+}
+
+package UI {
+  class CompanyAccountMenu {
+    -_service : ICompanyAccountService {readOnly}
+    +CompanyAccountMenu(service : ICompanyAccountService)
+    +Run() : void
+    -Register() : void
+    -Login() : void
+  }
+}
+
+class Program {
+  -{static} Main(args : string[]) : void
+}
+
+Program ..> InMemoryCompanyAccountRepository : creates
+Program ..> InMemoryCompanyCustomerRepository : creates
+Program ..> CompanyAccountService : creates
+Program ..> CompanyAccountMenu : creates and runs
+CompanyAccountMenu --> ICompanyAccountService : uses
+CompanyAccountMenu ..> CompanyCustomer : creates during registration
+
+CompanyAccountService ..|> ICompanyAccountService
+InMemoryCompanyAccountRepository ..|> ICompanyAccountRepository
+InMemoryCompanyCustomerRepository ..|> ICompanyCustomerRepository
+
+CompanyAccountService --> ICompanyAccountRepository : uses
+CompanyAccountService --> ICompanyCustomerRepository : uses
+ICompanyAccountService ..> CompanyAccount : returns
+ICompanyAccountService ..> CompanyCustomer : accepts
+ICompanyAccountRepository ..> CompanyAccount
+ICompanyCustomerRepository ..> CompanyCustomer
+InMemoryCompanyAccountRepository "1" --> "0..*" CompanyAccount : stores
+InMemoryCompanyCustomerRepository "1" --> "0..*" CompanyCustomer : stores
+
+CompanyAccount --> CompanyCustomer : CompanyCustomerId references Id
+
+legend bottom
+  All declared classes and interfaces are internal.
+  + public member; - private member; ~ internal member
+  ? nullable return value
+  Underlined methods are static. Model attributes are public properties.
+  Program.Main has implicit private accessibility in the C# source.
+endlegend
+@enduml
+

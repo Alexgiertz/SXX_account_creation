@@ -1,0 +1,112 @@
+@startuml registration_sequence
+title Company account registration
+autonumber
+actor Customer
+participant CompanyAccountMenu as Menu
+participant CompanyAccountService as Service
+participant "ICompanyCustomerRepository\n(InMemoryCompanyCustomerRepository)" as Customers
+participant "ICompanyAccountRepository\n(InMemoryCompanyAccountRepository)" as Accounts
+
+Customer -> Menu : Select Register and enter company details and password
+Menu -> Menu : Create CompanyCustomer
+Menu -> Service : Register(customer, email, password)
+activate Service
+Service -> Service : Check required fields
+
+alt A required field is missing
+  Service --> Menu : throw ArgumentException(field-specific message)
+  Menu --> Customer : Display validation error
+else Required fields provided
+  Service -> Service : Trim company name, organisation number and company email
+  Service -> Service : IsValidEmail(customer.Email) and IsValidEmail(loginEmail)
+  alt An email format is invalid
+    Service --> Menu : throw ArgumentException(email format message)
+    Menu --> Customer : Display validation error
+  else Email formats valid
+    Service -> Service : Trim phone number, contact names and login email
+    Service -> Customers : GetByOrganisationNumber(customer.OrganisationNumber)
+    Customers --> Service : existingCustomer or null
+    alt Company already exists
+      Service --> Menu : throw ArgumentException(duplicate company message)
+      Menu --> Customer : Display validation error
+    else Company does not exist
+      Service -> Accounts : GetByEmail(loginEmail)
+      Accounts --> Service : existingAccount or null
+      alt Login email already exists
+        Service --> Menu : throw ArgumentException(duplicate email message)
+        Menu --> Customer : Display validation error
+      else Login email available
+        Service -> Service : Create CompanyAccount
+        note right of Service
+          CompanyCustomerId = customer.Id
+          LoginEmail = loginEmail
+          Password = password
+        end note
+        Service -> Customers : Add(customer)
+        Customers --> Service : void
+        Service -> Accounts : Add(account)
+        Accounts --> Service : void
+        Service --> Menu : account
+        Menu --> Customer : Display registration confirmation
+      end
+    end
+  end
+end
+deactivate Service
+Menu -> Menu : Return to main menu
+@enduml
+
+@startuml login_sequence
+title Company account login
+autonumber
+actor Customer
+participant CompanyAccountMenu as Menu
+participant CompanyAccountService as Service
+participant "ICompanyAccountRepository\n(InMemoryCompanyAccountRepository)" as Accounts
+participant "ICompanyCustomerRepository\n(InMemoryCompanyCustomerRepository)" as Customers
+
+Customer -> Menu : Select Log in and enter email and password
+Menu -> Service : Login(email, password)
+activate Service
+Service -> Service : Check email and password are not blank
+
+alt A credential is blank
+  Service --> Menu : null
+else Credentials provided
+  Service -> Service : Trim login email and check IsValidEmail(loginEmail)
+  alt Invalid email format
+    Service --> Menu : null
+  else Valid email format
+    Service -> Accounts : GetByEmail(loginEmail)
+    Accounts --> Service : account or null
+    Service -> Service : Check account exists and password matches
+    alt Account found and password matches
+      Service --> Menu : account
+    else Account missing or password incorrect
+      Service --> Menu : null
+    end
+  end
+end
+deactivate Service
+
+alt Login returned null
+  Menu --> Customer : Display Invalid email or password
+else Login returned an account
+  Menu -> Service : GetCompanyCustomer(account.CompanyCustomerId)
+  activate Service
+  Service -> Customers : GetById(companyCustomerId)
+  Customers --> Service : customer or null
+  Service --> Menu : customer or null
+  deactivate Service
+  alt Company found
+    Menu --> Customer : Display Welcome, company name!
+  else Company missing
+    Menu --> Customer : Display linked company not found error
+  end
+end
+
+Menu -> Menu : Return to main menu
+note over Menu
+  Current implementation does not retain a signed-in session.
+end note
+@enduml
